@@ -1,0 +1,4 @@
+*.sqlite
+*.db
+url_cache.json
+docs/
