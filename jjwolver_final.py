@@ -15,6 +15,14 @@ class Actor():
     def __str__(self):
         return self.full_name
 
+class BabyName():
+    def __init__(self, year, name, rank):
+        self.year = year
+        self.name = name
+        self.rank = rank
+
+    def __str__(self):
+        return self.name
 
 #base urls
 IMDB_URL = 'http://www.imdb.com/list/ls050274118/'
@@ -46,6 +54,125 @@ def print_status(message):
 def write_cache_file(file_contents):
     with open(CACHE_FNAME,'w') as fileobj:
         json.dump(file_contents,fileobj, indent=4)
+
+def crawl_baby_name_pages():
+
+    #crawl top 100 for every year since 1880
+    for year in range(1880,2019):
+        this_page = BABY_BASE_URL + str(year) + '.htm'
+        this_scrape = scrape_baby_name_page(this_page,year)
+
+        #add these to the baby table
+        load_baby_name_data(this_scrape)
+
+        #write cache file on every 10th scrape
+        if year % 10 == 0:
+            write_cache_file(cache_file)
+
+#function: inserts data into baby name table
+#inputs: list of BabyName class
+#returns: nothing, nada, zip, zilch
+def load_baby_name_data(baby_name_list):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    statement = """
+        INSERT INTO BabyNames (
+        Year, Name, Rank) VALUES (?,?,?)
+    """
+
+    record_count = 0
+    for item in baby_name_list:
+        record_count += 1
+        parms = (item.year,item.name,item.rank)
+
+        cur.execute(statement,parms)
+        conn.commit()
+
+    conn.close()
+
+
+#function: scrapes a baby name page
+#inputs: page_url
+#returns: list of boy names
+def scrape_baby_name_page(url_path, year):
+    baby_names = []
+
+    if url_path not in cache_file:
+        my_request = requests.get(url_path)
+        html = my_request.text
+        print_status("Adding html to cache for " + str(year) + "...")
+        cache_file[url_path] = html
+    else:
+        print_status("Scraping baby names from cache for " + str(year) + "...")
+        html = cache_file[url_path]
+
+    soup = BeautifulSoup(html,'html.parser')
+
+    #find all table rows
+    all_tr = soup.find_all('tr')
+
+    #find all table columns within each row
+    for tr in all_tr:
+        all_td = tr.find_all('td')
+        col_pos = 0
+        this_rank = 0
+        this_boy_name = ''
+        for td in all_td:
+            col_pos += 1
+            if col_pos == 1:
+                this_rank = td.text.strip()
+            if col_pos == 3:
+                this_boy_name = td.a.text.strip()
+        baby_boy = BabyName(year, this_boy_name, this_rank)
+        baby_names.append(baby_boy)
+
+    return baby_names
+
+
+
+
+
+
+def create_baby_name_table():
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    print_status("Preparing BabyNames table...")
+
+    #drop the table if it exists
+    statement = """
+        DROP TABLE IF EXISTS BabyNames;
+    """
+
+    cur.execute(statement)
+    conn.commit()
+
+    #create the table if it does not exist
+    statement = """
+        CREATE TABLE IF NOT EXISTS BabyNames (
+            Year INTEGER,
+            [Rank] INTEGER,
+            Name TEXT
+        );
+    """
+
+    cur.execute(statement)
+    conn.commit()
+
+    #close the connection
+    conn.close()
+
+
+
+
+
+
+
+
+
+
+
 
 #function: scrapes the IMDB top 100 actors of all time page
 #inputs: None
@@ -165,9 +292,12 @@ def load_actor_data(actor_list):
 
 if __name__ == '__main__':
 
-    #scrape IMDB and create a list of actor classes
-    top_100_actors = scrape_imdb()
+    create_baby_name_table()
+    crawl_baby_name_pages()
 
-    #create the actors table and load the data
-    create_actor_table()
-    load_actor_data(top_100_actors)
+    # #scrape IMDB and create a list of actor classes
+    # top_100_actors = scrape_imdb()
+    #
+    # #create the actors table and load the data
+    # create_actor_table()
+    # load_actor_data(top_100_actors)
