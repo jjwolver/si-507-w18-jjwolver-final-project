@@ -166,7 +166,9 @@ def scrape_baby_name_page(url_path, year):
 
 
 
-
+#function: to create the table to store baby name info
+#inputs: none
+#outputs: none
 def create_baby_name_table():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -268,6 +270,10 @@ def scrape_imdb():
 
     return actors
 
+#function: to create the data table and structure to store the data about
+#          the top 100 actors
+# inputs: none
+# outputs: none
 def create_actor_table():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -300,6 +306,10 @@ def create_actor_table():
     #close the connection
     conn.close()
 
+#function: to insert the records for the top 100 male actors of all time
+#          as voted on my IMDB community.
+#inputs: a list of actors (scraped from IMDB)
+#outputs: none
 def load_actor_data(actor_list):
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -323,12 +333,16 @@ def load_actor_data(actor_list):
 
     print_status("Added " + str(actor_count) + " actors to database...")
 
+
+
+
+
 if __name__ == '__main__':
 
     db_status = check_db_status()
 
+    print("**********************ACTORS TABLE**************************")
     if db_status[0] > 0:
-        print("**********************ACTORS TABLE**************************")
         print("Actors table detected with " + str(db_status[0]) + " records.")
         user_input_1 = "start"
         while user_input_1 not in 'yes no':
@@ -356,8 +370,8 @@ if __name__ == '__main__':
         create_actor_table()
         load_actor_data(top_100_actors)
 
+    print("**********************BABY NAMES TABLE**************************")
     if db_status[1] > 0:
-        print("**********************BABY NAMES TABLE**************************")
         print("BabyNames table detected with " + str(db_status[1]) + " records.")
         user_input_1 = "start"
         while user_input_1 not in 'yes no':
