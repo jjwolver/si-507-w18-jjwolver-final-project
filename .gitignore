@@ -2,3 +2,4 @@
 *.db
 url_cache.json
 docs/
+__pycache__/
