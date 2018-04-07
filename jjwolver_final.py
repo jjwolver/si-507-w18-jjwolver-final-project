@@ -2,8 +2,11 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import sqlite3
+import plotly.plotly as py
+import plotly.graph_objs as go
 
-#classes
+#classes for an Actor and a baby name. Probably not necessary to create for this
+#, but man, I'm trying to demonstrate all the fun things I've learned!!!!
 class Actor():
     def __init__(self, full_name, bio, details, rank):
         self.full_name = full_name
@@ -24,17 +27,15 @@ class BabyName():
     def __str__(self):
         return self.name
 
-#base urls
+#base urls for IMDB and baby scraping stuff
 IMDB_URL = 'http://www.imdb.com/list/ls050274118/'
 BABY_BASE_URL = 'https://www.babycenter.com/top-baby-names-'
-
-#cache file check
+#cache file name
 CACHE_FNAME = 'url_cache.json'
-
 #database details
 DB_NAME = "jjwolver_final.sqlite"
 
-try:
+try: #to check the cache file to see if it exists
     file_obj = open(CACHE_FNAME, 'r')
     cache_contents = file_obj.read()
     cache_file = json.loads(cache_contents)
@@ -49,24 +50,27 @@ def check_db_status():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
 
-    statement = """
-        SELECT COUNT(*) FROM Actors;
-    """
+    try:
+        statement = """
+            SELECT COUNT(*) FROM Actors;
+        """
+        cur.execute(statement)
+        actor_record_count = 0
+        for row in cur:
+            actor_record_count = row[0]
+    except:
+        actor_record_count = 0
 
-    cur.execute(statement)
-    actor_record_count = 0
-    for row in cur:
-        actor_record_count = row[0]
-
-
-    statement = """
-        SELECT COUNT(*) FROM BabyNames;
-    """
-
-    cur.execute(statement)
-    baby_record_count = 0
-    for row in cur:
-        baby_record_count = row[0]
+    try:
+        statement = """
+            SELECT COUNT(*) FROM BabyNames;
+        """
+        cur.execute(statement)
+        baby_record_count = 0
+        for row in cur:
+            baby_record_count = row[0]
+    except:
+        baby_record_count = 0
 
     conn.close()
 
@@ -216,7 +220,7 @@ def scrape_imdb():
     actors = []
 
     if IMDB_URL not in cache_file:
-        print("Scraping IMDB from web...")
+        print_status("Scraping IMDB from web...")
         my_request = requests.get(IMDB_URL)
         html = my_request.text
         print_status("Adding html to cache...")
@@ -341,13 +345,13 @@ if __name__ == '__main__':
 
     db_status = check_db_status()
 
-    print("**********************ACTORS TABLE**************************")
+    print_status("**********************ACTORS TABLE**************************")
     if db_status[0] > 0:
-        print("Actors table detected with " + str(db_status[0]) + " records.")
+        print_status("Actors table detected with " + str(db_status[0]) + " records.")
         user_input_1 = "start"
         while user_input_1 not in 'yes no':
             user_input_1 = ""
-            print("Would you like to rebuild the actors table? Y/N")
+            print_status("Would you like to rebuild the actors table? Y/N")
             user_input_1 = input().lower()
 
             if user_input_1 == 'y' or user_input_1 == 'yes':
@@ -359,9 +363,9 @@ if __name__ == '__main__':
                 load_actor_data(top_100_actors)
 
             elif user_input_1 == 'n' or user_input_1 == 'no':
-                print("Using existing actors table")
+                print_status("Using existing actors table")
             else:
-                print("Invalid command. Y/N only please.")
+                print_status("Invalid command. Y/N only please.")
     else: #no records detected for the actors, rebuild it all
         #scrape IMDB and create a list of actor classes
         top_100_actors = scrape_imdb()
@@ -370,13 +374,13 @@ if __name__ == '__main__':
         create_actor_table()
         load_actor_data(top_100_actors)
 
-    print("**********************BABY NAMES TABLE**************************")
+    print_status("**********************BABY NAMES TABLE**************************")
     if db_status[1] > 0:
-        print("BabyNames table detected with " + str(db_status[1]) + " records.")
+        print_status("BabyNames table detected with " + str(db_status[1]) + " records.")
         user_input_1 = "start"
         while user_input_1 not in 'yes no':
             user_input_1 = ""
-            print("Would you like to rebuild the baby names table? Y/N")
+            print_status("Would you like to rebuild the baby names table? Y/N")
             user_input_1 = input().lower()
 
             if user_input_1 == 'y' or user_input_1 == 'yes':
@@ -384,9 +388,9 @@ if __name__ == '__main__':
                 crawl_baby_name_pages()
 
             elif user_input_1 == 'n' or user_input_1 == 'no':
-                print("Using existing baby names table")
+                print_status("Using existing baby names table")
             else:
-                print("Invalid command. Y/N only please.")
+                print_status("Invalid command. Y/N only please.")
     else: #no records detected for the babynames, rebuild it all
         create_baby_name_table()
         crawl_baby_name_pages()
