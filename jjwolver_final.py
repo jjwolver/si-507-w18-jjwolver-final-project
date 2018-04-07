@@ -338,11 +338,44 @@ def load_actor_data(actor_list):
     print_status("Added " + str(actor_count) + " actors to database...")
 
 
+def plot_most_common_names():
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    name_list = []
+    count_list = []
+
+    print_status("Gathering most popular baby " \
+                 "name data (Most times appeared in top 10)")
+    statement = """
+        SELECT Name, COUNT(*) [Total]
+        FROM BabyNames
+        GROUP BY Name
+        HAVING Rank <= 10
+        ORDER BY COUNT(*) DESC;
+    """
+
+    cur.execute(statement)
+
+    idx=0
+    for row in cur:
+        name_list.append(row[0])
+        count_list.append(row[1])
+        idx+=1
+
+    conn.close()
 
 
+    data = [go.Bar(
+                x=name_list,
+                y=count_list
+        )]
 
-if __name__ == '__main__':
+    print_status("Loading plotly graph")
+    py.plot(data, filename='Most-Common-Names')
 
+
+def main_program_start():
     db_status = check_db_status()
 
     print_status("**********************ACTORS TABLE**************************")
@@ -394,3 +427,9 @@ if __name__ == '__main__':
     else: #no records detected for the babynames, rebuild it all
         create_baby_name_table()
         crawl_baby_name_pages()
+
+
+
+if __name__ == '__main__':
+
+    plot_most_common_names()
