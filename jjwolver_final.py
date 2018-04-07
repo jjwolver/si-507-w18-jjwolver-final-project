@@ -17,9 +17,9 @@ class Actor():
 
 class BabyName():
     def __init__(self, year, name, rank):
-        self.year = year
+        self.year = int(year)
         self.name = name
-        self.rank = rank
+        self.rank = int(rank)
 
     def __str__(self):
         return self.name
@@ -42,6 +42,35 @@ try:
 # if there was no file, no worries. There will be soon!
 except:
     cache_file = {}
+
+#function: to check the status of the database, to see if it needs to be
+#          created or if we should use existing data
+def check_db_status():
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    statement = """
+        SELECT COUNT(*) FROM Actors;
+    """
+
+    cur.execute(statement)
+    actor_record_count = 0
+    for row in cur:
+        actor_record_count = row[0]
+
+
+    statement = """
+        SELECT COUNT(*) FROM BabyNames;
+    """
+
+    cur.execute(statement)
+    baby_record_count = 0
+    for row in cur:
+        baby_record_count = row[0]
+
+    conn.close()
+
+    return (actor_record_count,baby_record_count)
 
 #function: prints a message if the program is run from __main_
 def print_status(message):
@@ -69,6 +98,9 @@ def crawl_baby_name_pages():
         if year % 10 == 0:
             write_cache_file(cache_file)
 
+    #write the cache file when its all done
+    write_cache_file(cache_file)
+
 #function: inserts data into baby name table
 #inputs: list of BabyName class
 #returns: nothing, nada, zip, zilch
@@ -86,8 +118,9 @@ def load_baby_name_data(baby_name_list):
         record_count += 1
         parms = (item.year,item.name,item.rank)
 
-        cur.execute(statement,parms)
-        conn.commit()
+        if item.rank > 0:
+            cur.execute(statement,parms)
+            conn.commit()
 
     conn.close()
 
@@ -101,7 +134,7 @@ def scrape_baby_name_page(url_path, year):
     if url_path not in cache_file:
         my_request = requests.get(url_path)
         html = my_request.text
-        print_status("Adding html to cache for " + str(year) + "...")
+        print_status("Adding html to cache for baby names in " + str(year) + "...")
         cache_file[url_path] = html
     else:
         print_status("Scraping baby names from cache for " + str(year) + "...")
@@ -292,12 +325,54 @@ def load_actor_data(actor_list):
 
 if __name__ == '__main__':
 
-    create_baby_name_table()
-    crawl_baby_name_pages()
+    db_status = check_db_status()
 
-    # #scrape IMDB and create a list of actor classes
-    # top_100_actors = scrape_imdb()
-    #
-    # #create the actors table and load the data
-    # create_actor_table()
-    # load_actor_data(top_100_actors)
+    if db_status[0] > 0:
+        print("**********************ACTORS TABLE**************************")
+        print("Actors table detected with " + str(db_status[0]) + " records.")
+        user_input_1 = "start"
+        while user_input_1 not in 'yes no':
+            user_input_1 = ""
+            print("Would you like to rebuild the actors table? Y/N")
+            user_input_1 = input().lower()
+
+            if user_input_1 == 'y' or user_input_1 == 'yes':
+                #scrape IMDB and create a list of actor classes
+                top_100_actors = scrape_imdb()
+
+                # create the actors table and load the data
+                create_actor_table()
+                load_actor_data(top_100_actors)
+
+            elif user_input_1 == 'n' or user_input_1 == 'no':
+                print("Using existing actors table")
+            else:
+                print("Invalid command. Y/N only please.")
+    else: #no records detected for the actors, rebuild it all
+        #scrape IMDB and create a list of actor classes
+        top_100_actors = scrape_imdb()
+
+        # create the actors table and load the data
+        create_actor_table()
+        load_actor_data(top_100_actors)
+
+    if db_status[1] > 0:
+        print("**********************BABY NAMES TABLE**************************")
+        print("BabyNames table detected with " + str(db_status[1]) + " records.")
+        user_input_1 = "start"
+        while user_input_1 not in 'yes no':
+            user_input_1 = ""
+            print("Would you like to rebuild the baby names table? Y/N")
+            user_input_1 = input().lower()
+
+            if user_input_1 == 'y' or user_input_1 == 'yes':
+                create_baby_name_table()
+                crawl_baby_name_pages()
+
+            elif user_input_1 == 'n' or user_input_1 == 'no':
+                print("Using existing baby names table")
+            else:
+                print("Invalid command. Y/N only please.")
+    else: #no records detected for the babynames, rebuild it all
+        create_baby_name_table()
+        crawl_baby_name_pages()
