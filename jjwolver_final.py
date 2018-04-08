@@ -92,7 +92,10 @@ def crawl_baby_name_pages():
 
     #crawl top 100 for every year since 1880
     for year in range(1880,2019):
+
         this_page = BABY_BASE_URL + str(year) + '.htm'
+
+        this_scrape = None
         this_scrape = scrape_baby_name_page(this_page,year)
 
         #add these to the baby table
@@ -150,7 +153,9 @@ def scrape_baby_name_page(url_path, year):
     all_tr = soup.find_all('tr')
 
     #find all table columns within each row
+    total_this_page = 0
     for tr in all_tr:
+
         all_td = tr.find_all('td')
         col_pos = 0
         this_rank = 0
@@ -161,8 +166,13 @@ def scrape_baby_name_page(url_path, year):
                 this_rank = td.text.strip()
             if col_pos == 3:
                 this_boy_name = td.a.text.strip()
-        baby_boy = BabyName(year, this_boy_name, this_rank)
-        baby_names.append(baby_boy)
+
+        #only take the top 100, some pages show the next years top 100 and it
+        # was causing duplicate records in the same year.
+        total_this_page += 1
+        if total_this_page <= 101:
+            baby_boy = BabyName(year, this_boy_name, this_rank)
+            baby_names.append(baby_boy)
 
     return baby_names
 
@@ -338,15 +348,13 @@ def load_actor_data(actor_list):
     print_status("Added " + str(actor_count) + " actors to database...")
 
 
-def plot_most_common_names():
+def bar_most_common_names():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
 
     name_list = []
     count_list = []
 
-    print_status("Gathering most popular baby " \
-                 "name data (Most times appeared in top 10)")
     statement = """
         SELECT Name, COUNT(*) [Total]
         FROM BabyNames
@@ -368,12 +376,159 @@ def plot_most_common_names():
 
     data = [go.Bar(
                 x=name_list,
-                y=count_list
+                y=count_list,
+                name="Names appearing in top 10 the most"
         )]
 
-    print_status("Loading plotly graph")
+    print_status("Generating graph of most common names." \
+                 "This is defined as the name that appears in the top 10 " \
+                 "the most.")
     py.plot(data, filename='Most-Common-Names')
 
+def line_name_trend(name_passed):
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    year_list = []
+    rank_list = []
+
+    statement = """
+        SELECT Year, Rank
+        FROM BabyNames
+        WHERE LOWER(Name) = ?
+        ORDER BY Year ASC;
+    """
+    params = (name_passed.lower(),)
+    cur.execute(statement,params)
+
+    idx=0
+    for row in cur:
+        year_list.append(row[0])
+        rank_list.append(row[1])
+        idx+=1
+
+    conn.close()
+
+    trace0 = go.Scatter(
+                x = year_list,
+                y = rank_list,
+                mode = 'lines',
+                name = 'Name Trend for: ' + name_passed
+            )
+
+    data = [trace0]
+
+    layout = dict(title = 'Name Trend for: ' + name_passed,
+                  xaxis = dict(title = 'Year'),
+                  yaxis = dict(title = 'Rank Achieved',
+                               autorange='reversed'),
+                  )
+
+    print_status("Generating trend graph of the name " + name_passed + "." \
+                 "This is defined as the name that appears in the top 10 " \
+                 "the most.")
+    fig = dict(data=data,layout=layout)
+
+    py.plot(fig, filename='Name-trend')
+
+def table_actor_names(name_passed):
+
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    statement = """
+        SELECT FullName, Bio, Rank
+        FROM Actors a
+        WHERE LOWER(FirstName) = ?
+    """
+
+    params = (name_passed,)
+    cur.execute(statement,params)
+    actor_name = []
+    rank = []
+    bio = []
+    for row in cur:
+        actor_name.append(row[0])
+        bio.append(row[2])
+        rank.append(row[1])
+
+    conn.close()
+
+    values = [[actor_name],
+            [rank],
+            [bio]]
+
+    trace0 = go.Table(
+      type = 'table',
+      columnorder = [1,2,3],
+      columnwidth = [80,400,80],
+      header = dict(
+        values = [['<b>Actor Name</b>'],
+                      ['<b>Bio</b>'],
+                      ['<b>Rank</b>']],
+        line = dict(color = '#506784'),
+        fill = dict(color = '#119DFF'),
+        align = ['left','left','left'],
+        font = dict(color = 'white', size = 12),
+        height = 40
+      ),
+      cells = dict(
+        values = values,
+        line = dict(color = '#506784'),
+        fill = dict(color = ['#25FEFD', 'white']),
+        align = ['left', 'left', 'left'],
+        font = dict(color = '#506784', size = 12),
+        height = 30
+        ))
+
+    data = [trace0]
+
+    py.plot(data, filename = "Famous Actors")
+
+def bubble_baby_names():
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    name_list = []
+    count_list = []
+    highest_rank_list = []
+    actors = []
+    color_list = []
+    statement = """
+        SELECT a.Name, COUNT(*)
+        , (SELECT z.FullName FROM Actors z WHERE z.FirstName = a.Name) [Actors]
+        , MIN(Rank)
+        FROM BabyNames a
+        GROUP BY a.Name
+        ORDER BY COUNT(*) DESC LIMIT 50
+    """
+
+    cur.execute(statement)
+    for row in cur:
+        name_list.append(row[0])
+        count_list.append(row[1]/4)
+        actors.append(row[2])
+        highest_rank_list.append(row[3])
+        if row[2] != None:
+            color_list.append("Blue")
+        else:
+            color_list.append("Black")
+
+    conn.close()
+
+    trace0 = go.Scatter(
+                x=name_list,
+                y=highest_rank_list,
+                text=actors,
+                mode='markers',
+                marker=dict(
+                    color=color_list,
+                    size=count_list,
+                )
+            )
+
+    data = [trace0]
+    py.plot(data, filename='bubblechart-text')
 
 def main_program_start():
     db_status = check_db_status()
@@ -428,8 +583,52 @@ def main_program_start():
         create_baby_name_table()
         crawl_baby_name_pages()
 
+def print_options():
+    print_status("")
+    print_status("Welcome to the baby name / actor name popularity final project!")
+    print_status("")
+    print_status("Available commands")
+    print_status("Command".ljust(14) + "Description")
+    print_status("common".ljust(14) + "Shows a bar chart of the most common names of all time")
+    print_status("name".ljust(14) + "Prints line graph of all years and when the name was most popular")
 
 
 if __name__ == '__main__':
 
-    plot_most_common_names()
+    bubble_baby_names()
+    input()
+
+    main_program_start()
+
+    quit_commands = "exit quit stop"
+    available_commands = "common name year"
+    print_options()
+
+    user_input_2 = 'start'
+    while user_input_2 not in quit_commands:
+        print_status("Enter command")
+        user_input_2 = input().lower()
+
+        user_input_list = user_input_2.split(" ")
+
+        if user_input_list[0] in quit_commands:
+            print_status("Bye!")
+            exit()
+
+        if user_input_list[0] == 'common':
+            bar_most_common_names()
+
+        if user_input_list[0] == 'name':
+            if len(user_input_list) > 1:
+                line_name_trend(user_input_list[1])
+                table_actor_names(user_input_list[1])
+            else:
+                print_status("Must supply a name after the name parameter")
+
+
+
+
+
+
+
+    #plot_most_common_names()
