@@ -3,14 +3,14 @@ import unittest
 
 class TestActorClass(unittest.TestCase):
 
-    def test_class_creation(self):
+    def test_basic_name_class_creation(self):
         actor_class = Actor("Will Smith","A good actor","He was in Independence Day",100)
         self.assertEqual(actor_class.first_name,"Will")
         self.assertEqual(actor_class.rank,100)
         self.assertEqual(actor_class.bio,"A good actor")
         self.assertEqual(actor_class.details,"He was in Independence Day")
 
-    def test_list_length(self):
+    def test_actor_list_length(self):
         actor_list = scrape_imdb()
         self.assertEqual(len(actor_list), 100)
 
@@ -26,7 +26,7 @@ class TestActorClass(unittest.TestCase):
 
 class TestActorDatabase(unittest.TestCase):
 
-    def test_row_count_actor(self):
+    def test_actor_row_count(self):
         conn = sqlite3.connect(DB_NAME)
         cur = conn.cursor()
 
@@ -39,12 +39,14 @@ class TestActorDatabase(unittest.TestCase):
             row_count = row[0]
         conn.close()
 
+        #make sure exactly 100 actors are returned from the top 100 actors list
         self.assertEqual(row_count,100)
 
 class TestBabyNameClass(unittest.TestCase):
     def test_class_creation(self):
         baby_class = BabyName(2018, 'Jeremy', 1)
 
+        #test basic aspects of the baby class
         self.assertEqual(baby_class.year,2018)
         self.assertEqual(baby_class.rank,1)
         self.assertEqual(baby_class.name,"Jeremy")
@@ -64,8 +66,40 @@ class TestBabyDatabase(unittest.TestCase):
             row_count = row[0]
         conn.close()
 
-        #test that there is more than 5000 rows
+        #test that there are more than 5000 rows returned
         self.assertGreater(row_count,5000)
+
+    def test_basic_baby_class_creation(self):
+        baby_class = BabyName(1985, "Jeremy", 25)
+
+        #test the basic aspects of the baby name class
+        self.assertNotEqual(baby_class.year,2018)
+        self.assertEqual(baby_class.name,'Jeremy')
+        self.assertEqual(baby_class.rank,25)
+
+    def test_class_from_db(self):
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+
+        statement = """
+            SELECT Year, Name, Rank
+            FROM BabyNames
+            WHERE Year = 2018
+            AND Name = 'Liam'
+            ;
+        """
+
+        cur.execute(statement)
+        for row in cur:
+            baby_class = BabyName(row[0], row[1], row[2])
+        conn.close()
+
+        #assert that this baby class works, and that it returns properly
+        self.assertEqual(baby_class.year,2018)
+        self.assertEqual(baby_class.name,'Liam')
+        self.assertEqual(baby_class.rank,1)
+
+        self.assertNotEqual(baby_class.rank,0)
 
 
 

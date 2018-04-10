@@ -27,6 +27,14 @@ class BabyName():
     def __str__(self):
         return self.name
 
+    def __eq__(self, other):
+        return self.year == other.year and self.name == other.name and \
+            self.rank == other.rank
+
+    def __ne__(self, other):
+        return self.year != other.year or self.name != other.name or \
+            self.rank != other.rank
+
 #base urls for IMDB and baby scraping stuff
 IMDB_URL = 'http://www.imdb.com/list/ls050274118/'
 BABY_BASE_URL = 'https://www.babycenter.com/top-baby-names-'
