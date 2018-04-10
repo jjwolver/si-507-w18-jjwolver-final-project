@@ -539,7 +539,7 @@ def bubble_baby_names():
     cur.execute(statement)
     for row in cur:
         name_list.append(row[0])
-        count_list.append(row[1]/4)
+        count_list.append(row[1])
         actors.append(row[2])
         highest_rank_list.append(row[3])
         if row[2] != None:
@@ -548,6 +548,10 @@ def bubble_baby_names():
             color_list.append("Black")
 
     conn.close()
+
+    #normalize the count array for sizing
+    count_list = [float(i)/max(count_list) for i in count_list]
+    count_list = [float(i)*15+10 for i in count_list]
 
     trace0 = go.Scatter(
                 x=name_list,
@@ -561,7 +565,22 @@ def bubble_baby_names():
             )
 
     data = [trace0]
-    py.plot(data, filename='bubblechart-text')
+
+    layout = dict(title = 'Bubble Plot of Top 50 Names',
+                  autosize = False,
+                  width = 900,
+                  height = 750,
+                  xaxis = dict(title = 'Name'),
+                  yaxis = dict(title = 'Rank Achieved',
+                               autorange='reversed'),
+                  )
+
+    fig = dict(data=data,layout=layout)
+    py.plot(fig, filename='Bubble')
+
+    print_status("Generating bubble plot of top 50 names. " \
+                 "Names that are shared by a Top 100 Actor will be colored blue.")
+
 
 def main_program_start():
     db_status = check_db_status()
@@ -624,17 +643,14 @@ def print_options():
     print_status("Command".ljust(14) + "Description")
     print_status("common".ljust(14) + "Shows a bar chart of the most common names of all time")
     print_status("name".ljust(14) + "Prints line graph of all years and when the name was most popular")
-
+    print_status("actor".ljust(14) + "Prints bubble plot of top 25 names and actors with those names")
 
 if __name__ == '__main__':
-
-    #bubble_baby_names()
-    #input()
 
     main_program_start()
 
     quit_commands = "exit quit stop"
-    available_commands = "common name year"
+    available_commands = "common name actor"
     print_options()
 
     user_input_2 = 'start'
@@ -658,10 +674,5 @@ if __name__ == '__main__':
             else:
                 print_status("Must supply a name after the name parameter")
 
-
-
-
-
-
-
-    #plot_most_common_names()
+        if user_input_list[0] == 'actor':
+            bubble_baby_names()
