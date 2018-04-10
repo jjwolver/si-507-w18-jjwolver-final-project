@@ -362,13 +362,16 @@ def bar_most_common_names():
 
     name_list = []
     count_list = []
+    text_list = []
 
     statement = """
         SELECT Name, COUNT(*) [Total]
+        , ROUND(AVG(Rank),1) [AvgRank]
+        , MIN(Rank) [BestRank]
         FROM BabyNames
+        WHERE Rank <= 10
         GROUP BY Name
-        HAVING Rank <= 10
-        ORDER BY COUNT(*) DESC;
+        ORDER BY COUNT(*) DESC ,AVG(Rank) ASC LIMIT 25;
     """
 
     cur.execute(statement)
@@ -377,6 +380,8 @@ def bar_most_common_names():
     for row in cur:
         name_list.append(row[0])
         count_list.append(row[1])
+        text_list.append('Avg Rank: ' + str(row[2]) + "<br>" +\
+                         'Highest Rank: ' + str(row[3]) )
         idx+=1
 
     conn.close()
@@ -385,17 +390,32 @@ def bar_most_common_names():
     data = [go.Bar(
                 x=name_list,
                 y=count_list,
+                text=text_list,
                 name="Names appearing in top 10 the most"
         )]
 
-    print_status("Generating graph of most common names." \
+    layout = dict(title = 'Names appearing in the Top 10 the Most',
+                  autosize = False,
+                  width = 900,
+                  height = 750,
+                  xaxis = dict(title = 'Name'),
+                  yaxis = dict(title = 'Number of Years in the Top 10'),
+                  )
+
+    fig = dict(data=data,layout=layout)
+    py.plot(fig, filename='Most-Common-Names')
+
+    print_status("Generating graph of most common names. " \
                  "This is defined as the name that appears in the top 10 " \
                  "the most.")
-    py.plot(data, filename='Most-Common-Names')
+
 
 def line_name_trend(name_passed):
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
+
+    name_proper = name_passed[:1].upper() + \
+                  name_passed[1:].lower()
 
     year_list = []
     rank_list = []
@@ -421,23 +441,28 @@ def line_name_trend(name_passed):
                 x = year_list,
                 y = rank_list,
                 mode = 'lines',
-                name = 'Name Trend for: ' + name_passed
+                name = 'Name Trend for: ' + name_proper
             )
 
     data = [trace0]
 
-    layout = dict(title = 'Name Trend for: ' + name_passed,
+    layout = dict(title = 'Name Trend for: ' + name_proper,
+                  autosize = False,
+                  width = 500,
+                  height = 500,
                   xaxis = dict(title = 'Year'),
                   yaxis = dict(title = 'Rank Achieved',
                                autorange='reversed'),
                   )
 
-    print_status("Generating trend graph of the name " + name_passed + "." \
-                 "This is defined as the name that appears in the top 10 " \
-                 "the most.")
     fig = dict(data=data,layout=layout)
-
     py.plot(fig, filename='Name-trend')
+
+    print_status("Generating trend graph of the name " + name_proper + ". " \
+                 "I'll also provide a list of actors that have that name." \
+                 "Two separate browser windows will be opened.")
+
+
 
 def table_actor_names(name_passed):
 
@@ -603,8 +628,8 @@ def print_options():
 
 if __name__ == '__main__':
 
-    bubble_baby_names()
-    input()
+    #bubble_baby_names()
+    #input()
 
     main_program_start()
 
