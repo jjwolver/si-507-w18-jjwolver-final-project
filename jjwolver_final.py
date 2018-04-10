@@ -532,6 +532,7 @@ def bubble_baby_names():
         , (SELECT z.FullName FROM Actors z WHERE z.FirstName = a.Name) [Actors]
         , MIN(Rank)
         FROM BabyNames a
+        WHERE a.Rank <= 25
         GROUP BY a.Name
         ORDER BY COUNT(*) DESC LIMIT 50
     """
@@ -550,8 +551,7 @@ def bubble_baby_names():
     conn.close()
 
     #normalize the count array for sizing
-    count_list = [float(i)/max(count_list) for i in count_list]
-    count_list = [float(i)*15+10 for i in count_list]
+    count_list = [(float(i)/max(count_list))*50 for i in count_list]
 
     trace0 = go.Scatter(
                 x=name_list,
