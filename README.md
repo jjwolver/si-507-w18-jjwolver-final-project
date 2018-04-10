@@ -37,10 +37,11 @@ built properly.
 NOTE: All urls visited and scraped will be cached in url_cache.json
 
 ## Code Structure
-[Import Statements for Packages used]
-[Class Definitions]
-  -Actor Class
-  -BabyName Class
+1. [Import Statements for Packages used]
+2. [Class Definitions]
+3. [Functions]
+#  scrape_baby_name_page(url_path, year)
+#  scrape_imdb()
 
 
 
