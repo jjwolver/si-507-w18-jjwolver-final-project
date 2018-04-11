@@ -42,8 +42,8 @@ NOTE: All urls visited and scraped will be cached in url_cache.json
 1. [Import Statements for Packages used]
 2. [Class Definitions]
 3. [Functions]
-#  scrape_baby_name_page(url_path, year)
-#  scrape_imdb()
+###  scrape_baby_name_page(url_path, year)
+###  scrape_imdb()
 
 
 ## Versioning
