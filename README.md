@@ -15,10 +15,10 @@ built properly.
 
 ## Running the main program
 
-1. Initial run will automatically create 2 database tables and begin scraping
+1. Initial run will automatically create 3 database tables and begin scraping
    the web for the top 100 actors from IMDB. And then the top 100 baby names
-   by year since 1880.
-   a. Subsequent runs will detect that the database already exists. And will
+   by year since 1880. And finally a unique list of names and their origin/meaning
+   a. Subsequent runs will detect that the tables already exist. And will
       prompt the user if they would like to recreate the database or use the
       existing data.
 2. After several minutes of scraping (if initial run or rebuild), the user
@@ -30,6 +30,8 @@ built properly.
    The user can type "actor" to produce a bubble chart of the top 50 names.
    The size of the bubble represents the number of years the name was in the top
    50.
+4. System commands (help, quit, rebuild, clear-cache)
+5. Application commands (common, name <name>, actor)
 
 ## Data Sources - All through open HTTP web scraping
 1. IMDB
@@ -42,7 +44,6 @@ NOTE: All urls visited and scraped will be cached in url_cache.json
 3. [Functions]
 #  scrape_baby_name_page(url_path, year)
 #  scrape_imdb()
-
 
 
 ## Versioning

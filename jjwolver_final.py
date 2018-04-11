@@ -56,6 +56,19 @@ try: #to check the cache file to see if it exists
 except:
     cache_file = {}
 
+#function: to clear the cache file
+#inputs: none
+#outputs: none
+def clear_cache():
+    try:
+        cache_file = {}
+        write_cache_file(cache_file)
+        print_status("Cache file has been cleared")
+    except:
+        print_status("There has been an error when attempting "\
+                     "to clear the cache")
+
+
 #function: to check the status of the database, to see if it needs to be
 #          created or if we should use existing data
 def check_db_status():
@@ -88,7 +101,8 @@ def check_db_status():
 
     return (actor_record_count,baby_record_count)
 
-#function: prints a message if the program is run from __main_
+#function: prints a message if the program is run from __main__
+#purpose: to ignore any print statements when test code is run
 def print_status(message):
     if __name__ == '__main__':
         print(message)
@@ -103,6 +117,9 @@ def write_cache_file(file_contents):
     except:
         print("Error writing cache file contents. Permission Denied")
 
+#function: crawls all the baby name pages
+#inputs: none
+#outputs: none
 def crawl_baby_name_pages():
 
     #crawl top 100 for every year since 1880
@@ -234,7 +251,7 @@ def crawl_baby_name_meaning_pages():
 
     #write the cache file when its all done
     #sleep 3 seconds first before you write the cache.. cache file is VERY large
-    sleep(3)
+    sleep(2)
     write_cache_file(cache_file)
 
 def scrape_baby_name_meaning_page(name, url):
@@ -318,8 +335,7 @@ def create_baby_name_tables():
             Id INTEGER PRIMARY KEY AUTOINCREMENT,
             Name Text,
             Meaning Text,
-            Origin Text,
-            Theme Text
+            Origin Text
         );
     """
 
@@ -464,7 +480,10 @@ def load_actor_data(actor_list):
 
     print_status("Added " + str(actor_count) + " actors to database...")
 
-
+#function: produces a bar chart showing the 25 most common names that appear
+# in the Top 10. The y axis is how many years it appeared in the top 10. There
+# is mouseover details showing the highest rank, the average rank, the meaning
+# and the origin of the name.
 def bar_most_common_names():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
@@ -474,13 +493,15 @@ def bar_most_common_names():
     text_list = []
 
     statement = """
-        SELECT Name, COUNT(*) [Total]
-        , ROUND(AVG(Rank),1) [AvgRank]
-        , MIN(Rank) [BestRank]
-        FROM BabyNames
-        WHERE Rank <= 10
-        GROUP BY Name
-        ORDER BY COUNT(*) DESC ,AVG(Rank) ASC LIMIT 25;
+        SELECT a.Name, COUNT(*) [Total]
+        , ROUND(AVG(a.Rank),1) [AvgRank]
+        , MIN(a.Rank) [BestRank]
+        , (SELECT z.Origin FROM BabyNameOrigin z WHERE z.Name = a.Name) [Origin]
+        , (SELECT z.Meaning FROM BabyNameOrigin z WHERE z.Name = a.Name) [Meaning]
+        FROM BabyNames a
+        WHERE a.Rank <= 10
+        GROUP BY a.Name
+        ORDER BY COUNT(*) DESC ,AVG(a.Rank) ASC LIMIT 25;
     """
 
     cur.execute(statement)
@@ -489,8 +510,23 @@ def bar_most_common_names():
     for row in cur:
         name_list.append(row[0])
         count_list.append(row[1])
+
+        #this piece of code puts a line break in for every 10th word
+        #to help with spacing
+        meaning_split = row[5].split(" ")
+        meaning_with_breaks = ''
+        break_counter = 0
+        for word in meaning_split:
+            break_counter += 1
+            if break_counter % 10 == 0:
+                meaning_with_breaks += "<br>"
+            else:
+                meaning_with_breaks += word + ' '
+
         text_list.append('Avg Rank: ' + str(row[2]) + "<br>" +\
-                         'Highest Rank: ' + str(row[3]) )
+                         'Highest Rank: ' + str(row[3]) + "<br>" + \
+                         'Origin: ' + str(row[4]) + "<br>" + \
+                         'Meaning: ' + meaning_with_breaks  )
         idx+=1
 
     conn.close()
@@ -754,21 +790,25 @@ def print_options():
     print_status("")
     print_status("Welcome to the baby name / actor name popularity final project!")
     print_status("")
-    print_status("Available commands")
-    print_status("Command".ljust(14) + "Description")
+    print_status("-"*25)
+    print_status("COMMAND".ljust(14) + "DESCRIPTION")
+    print_status("- - - - - - - - - - - - - - - - - ")
     print_status("common".ljust(14) + "Shows a bar chart of the most common names of all time")
     print_status("name".ljust(14) + "Prints line graph of all years and when the name was most popular")
     print_status("actor".ljust(14) + "Prints bubble plot of top 25 names and actors with those names")
+    print_status("- - - - - - - - - - - - - - - - - ")
+    print_status("clear-cache".ljust(14) + "Clears the cache file.")
+    print_status("rebuild".ljust(14) + "Rebuilds all databases, and rescrapes the data.")
+    print_status("help".ljust(14) + "Prints this list of commands")
+    print_status("- - - - - - - - - - - - - - - - - ")
 
 if __name__ == '__main__':
 
-    crawl_baby_name_meaning_pages()
-    input()
-
     main_program_start()
 
+    #list of allowable commands
     quit_commands = "exit quit stop"
-    available_commands = "common name actor"
+    available_commands = "common name actor clear-cache rebuild help"
     print_options()
 
     user_input_2 = 'start'
@@ -782,15 +822,27 @@ if __name__ == '__main__':
             print_status("Bye!")
             exit()
 
-        if user_input_list[0] == 'common':
-            bar_most_common_names()
+        if user_input_list[0] in available_commands:
+            if user_input_list[0] == 'help':
+                print_options()
 
-        if user_input_list[0] == 'name':
-            if len(user_input_list) > 1:
-                line_name_trend(user_input_list[1])
-                table_actor_names(user_input_list[1])
-            else:
-                print_status("Must supply a name after the name parameter")
+            if user_input_list[0] == 'clear-cache':
+                clear_cache()
 
-        if user_input_list[0] == 'actor':
-            bubble_baby_names()
+            if user_input_list[0] == 'rebuild':
+                main_program_start()
+
+            if user_input_list[0] == 'common':
+                bar_most_common_names()
+
+            if user_input_list[0] == 'name':
+                if len(user_input_list) > 1:
+                    line_name_trend(user_input_list[1])
+                    table_actor_names(user_input_list[1])
+                else:
+                    print_status("Must supply a name after the name parameter")
+
+            if user_input_list[0] == 'actor':
+                bubble_baby_names()
+        else:
+            print_status("Command not found: " + user_input_list[0])
