@@ -4,6 +4,7 @@ import json
 import sqlite3
 import plotly.plotly as py
 import plotly.graph_objs as go
+from time import sleep
 
 #classes for an Actor and a baby name. Probably not necessary to create for this
 #, but man, I'm trying to demonstrate all the fun things I've learned!!!!
@@ -19,10 +20,11 @@ class Actor():
         return self.full_name
 
 class BabyName():
-    def __init__(self, year, name, rank):
+    def __init__(self, year, name, rank, uri):
         self.year = int(year)
         self.name = name
         self.rank = int(rank)
+        self.uri = uri
 
     def __str__(self):
         return self.name
@@ -38,6 +40,8 @@ class BabyName():
 #base urls for IMDB and baby scraping stuff
 IMDB_URL = 'http://www.imdb.com/list/ls050274118/'
 BABY_BASE_URL = 'https://www.babycenter.com/top-baby-names-'
+BABY_BASE_ORIGIN_URL = 'https://www.babycenter.com/'
+
 #cache file name
 CACHE_FNAME = 'url_cache.json'
 #database details
@@ -93,8 +97,11 @@ def print_status(message):
 ## param: the contents of the cache file
 ## returns: nothing
 def write_cache_file(file_contents):
-    with open(CACHE_FNAME,'w') as fileobj:
-        json.dump(file_contents,fileobj, indent=4)
+    try:
+        with open(CACHE_FNAME,'w') as fileobj:
+            json.dump(file_contents,fileobj, indent=4)
+    except:
+        print("Error writing cache file contents. Permission Denied")
 
 def crawl_baby_name_pages():
 
@@ -125,13 +132,13 @@ def load_baby_name_data(baby_name_list):
 
     statement = """
         INSERT INTO BabyNames (
-        Year, Name, Rank) VALUES (?,?,?)
+        Year, Name, Rank, URI) VALUES (?,?,?,?)
     """
 
     record_count = 0
     for item in baby_name_list:
         record_count += 1
-        parms = (item.year,item.name,item.rank)
+        parms = (item.year,item.name,item.rank, item.uri)
 
         if item.rank > 0:
             cur.execute(statement,parms)
@@ -168,22 +175,99 @@ def scrape_baby_name_page(url_path, year):
         col_pos = 0
         this_rank = 0
         this_boy_name = ''
+        uri = ''
         for td in all_td:
             col_pos += 1
             if col_pos == 1:
                 this_rank = td.text.strip()
             if col_pos == 3:
                 this_boy_name = td.a.text.strip()
+                uri = td.a['href']
 
         #only take the top 100, some pages show the next years top 100 and it
         # was causing duplicate records in the same year.
         total_this_page += 1
         if total_this_page <= 101:
-            baby_boy = BabyName(year, this_boy_name, this_rank)
+            baby_boy = BabyName(year, this_boy_name, this_rank, uri)
             baby_names.append(baby_boy)
 
     return baby_names
 
+
+#function: a distinct list of URIs are scraped to get the meaning and origin
+#          of each baby name
+#inputs: none
+#outputs: none - writes to the database
+def crawl_baby_name_meaning_pages():
+    conn = sqlite3.connect(DB_NAME)
+    cur = conn.cursor()
+
+    #used for the insert statement during cursor loop
+    insert = conn.cursor()
+
+    statement = """
+        SELECT DISTINCT Name, URI
+        FROM BabyNames
+    """
+
+    cur.execute(statement)
+
+    row_counter = 0
+    for row in cur:
+        row_counter += 1
+
+        #write cache file on every 30th scrape
+        if row_counter % 30 == 0:
+            write_cache_file(cache_file)
+
+        baby_name_items = scrape_baby_name_meaning_page(row[0],\
+                        BABY_BASE_ORIGIN_URL + row[1])
+
+
+        statement = """
+            INSERT INTO BabyNameOrigin (Name, Meaning, Origin) VALUES (?,?,?);
+        """
+        insert.execute(statement,baby_name_items)
+        conn.commit()
+
+    conn.close()
+
+    #write the cache file when its all done
+    #sleep 3 seconds first before you write the cache.. cache file is VERY large
+    sleep(3)
+    write_cache_file(cache_file)
+
+def scrape_baby_name_meaning_page(name, url):
+
+    if url not in cache_file:
+        print_status("Scraping " + name + " meaning from web...")
+        my_request = requests.get(url)
+        html = my_request.text
+        print_status("Adding html to cache...")
+        cache_file[url] = html
+    else:
+        print_status("Scraping " + name + " meaning from cache...")
+        html = cache_file[url]
+
+    soup = BeautifulSoup(html,'html.parser')
+
+    try:
+        paragraph_tags = soup.find_all(class_='row')
+        counter = 0
+        name_meaning = ''
+        name_origin = ''
+        for item in paragraph_tags:
+            p = item.find_all('p')
+            for this_p in p:
+                counter+=1
+                if counter == 11:
+                    name_meaning = this_p.text.strip()
+                if counter == 12:
+                    name_origin = this_p.find('a').text.strip()
+
+        return (name,name_meaning,name_origin)
+    except:
+        return (name,'','')
 
 
 
@@ -191,7 +275,7 @@ def scrape_baby_name_page(url_path, year):
 #function: to create the table to store baby name info
 #inputs: none
 #outputs: none
-def create_baby_name_table():
+def create_baby_name_tables():
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
 
@@ -208,9 +292,34 @@ def create_baby_name_table():
     #create the table if it does not exist
     statement = """
         CREATE TABLE IF NOT EXISTS BabyNames (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
             Year INTEGER,
             [Rank] INTEGER,
-            Name TEXT
+            Name TEXT,
+            URI TEXT
+        );
+    """
+
+    cur.execute(statement)
+    conn.commit()
+
+
+    #drop the table if it exists
+    statement = """
+        DROP TABLE IF EXISTS BabyNameOrigin;
+    """
+
+    cur.execute(statement)
+    conn.commit()
+
+    #create the table if it does not exist
+    statement = """
+        CREATE TABLE IF NOT EXISTS BabyNameOrigin (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name Text,
+            Meaning Text,
+            Origin Text,
+            Theme Text
         );
     """
 
@@ -624,16 +733,22 @@ def main_program_start():
             user_input_1 = input().lower()
 
             if user_input_1 == 'y' or user_input_1 == 'yes':
-                create_baby_name_table()
+                create_baby_name_tables()
                 crawl_baby_name_pages()
+                #after all the names are written to the DB a unique list is
+                #used to get the meaning and origin of each name
+                crawl_baby_name_meaning_pages()
 
             elif user_input_1 == 'n' or user_input_1 == 'no':
                 print_status("Using existing baby names table")
             else:
                 print_status("Invalid command. Y/N only please.")
     else: #no records detected for the babynames, rebuild it all
-        create_baby_name_table()
+        create_baby_name_tables()
         crawl_baby_name_pages()
+        #after all the names are written to the DB a unique list is
+        #used to get the meaning and origin of each name
+        crawl_baby_name_meaning_pages()
 
 def print_options():
     print_status("")
@@ -646,6 +761,9 @@ def print_options():
     print_status("actor".ljust(14) + "Prints bubble plot of top 25 names and actors with those names")
 
 if __name__ == '__main__':
+
+    crawl_baby_name_meaning_pages()
+    input()
 
     main_program_start()
 
