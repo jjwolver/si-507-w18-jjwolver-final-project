@@ -2,12 +2,11 @@
 
 SI507 Final Project for Jeremy Wolverton (jjwolver).
 
-## Getting Started
+## Prerequisites
 
-A virtual environment has been created (final_proj). Refer to the
-requirements.txt file for python package installation.
+Refer to the requirements.txt file for python package installation.
 
-## Running the tests
+## UnitTest
 
 This application uses UnitTest. jjwolver_final_test.py runs 8 separate tests
 with various assertions to verify that aspects of the application are
@@ -42,9 +41,8 @@ NOTE: All urls visited and scraped will be cached in url_cache.json
 1. [Import Statements for Packages used]
 2. [Class Definitions]
 3. [Functions]
-###  scrape_baby_name_page(url_path, year)
-###  scrape_imdb()
-
+4. [Program Start]
+5. [User Interaction]
 
 ## Versioning
 
@@ -56,4 +54,4 @@ NOTE: All urls visited and scraped will be cached in url_cache.json
 
 ## Acknowledgments
 
-* Thank you teaching team! You guys worked hard all term!
+* Thank you SI507 W18 teaching team! You guys worked hard all term!

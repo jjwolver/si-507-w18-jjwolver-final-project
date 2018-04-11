@@ -44,7 +44,7 @@ class TestActorDatabase(unittest.TestCase):
 
 class TestBabyNameClass(unittest.TestCase):
     def test_class_creation(self):
-        baby_class = BabyName(2018, 'Jeremy', 1)
+        baby_class = BabyName(2018, 'Jeremy', 1,'')
 
         #test basic aspects of the baby class
         self.assertEqual(baby_class.year,2018)
@@ -70,7 +70,7 @@ class TestBabyDatabase(unittest.TestCase):
         self.assertGreater(row_count,5000)
 
     def test_basic_baby_class_creation(self):
-        baby_class = BabyName(1985, "Jeremy", 25)
+        baby_class = BabyName(1985, "Jeremy", 25,'')
 
         #test the basic aspects of the baby name class
         self.assertNotEqual(baby_class.year,2018)
@@ -91,7 +91,7 @@ class TestBabyDatabase(unittest.TestCase):
 
         cur.execute(statement)
         for row in cur:
-            baby_class = BabyName(row[0], row[1], row[2])
+            baby_class = BabyName(row[0], row[1], row[2],'')
         conn.close()
 
         #assert that this baby class works, and that it returns properly
