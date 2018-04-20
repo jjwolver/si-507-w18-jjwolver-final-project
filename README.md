@@ -4,7 +4,9 @@ SI507 Final Project for Jeremy Wolverton (jjwolver).
 
 ## Prerequisites
 
-Refer to the requirements.txt file for python package installation.
+1. Refer to the requirements.txt file for python package installation.
+2. You will also need a plotly account with local authentication set up. Please
+   refer to this guide: https://plot.ly/python/getting-started/ to get set up.
 
 ## UnitTest
 
